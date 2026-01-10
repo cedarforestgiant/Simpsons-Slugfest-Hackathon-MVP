@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Slugfest - Boxing Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+
+        #gameTitle {
+            font-size: 48px;
+            color: #ff0;
+            text-shadow: 4px 4px #f00;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+
+        #gameCanvas {
+            border: 8px solid #444;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #controls {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #0ff;
+            text-align: center;
+        }
+
+        #controls div {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameTitle">SUPER SLUGFEST</div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="controls">
+        <div>ARROW KEYS: Move | SPACE: Punch</div>
+        <div>Press ENTER to start</div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
