@@ -18,6 +18,14 @@ const introState = {
     phase: 'SLIDE' // SLIDE, IMPACT, WAITING
 };
 
+// KO Sequence State
+const koState = {
+    timer: 0,
+    phase: 'FREEZE', // FREEZE, POP, FALL, DONE
+    loser: null,
+    flashOpacity: 0
+};
+
 // Helper: Background Removal
 function removeBackground(imageSrc, callback) {
     const img = new Image();
@@ -117,31 +125,32 @@ const player = {
     x: 320,
     y: 240,
     width: 256, // 1024 / 4 cols
-    height: 256, // 1024 / 4 rows
+    height: 341, // 1024 / 3 rows
     // Sprite config
     spriteSheet: images.fighter1Movement,
     prefightImage: images.fighter1Prefight,
     isSprite: true,
     cols: 4,
-    rows: 4,
+    rows: 3,
+    rowHeights: [341, 341, 342],
     frameIndex: 0,
     animTimer: 0,
     animSpeed: 10,
     animations: {
-        idle: [0, 1], 
+        idle: [8, 9], 
         move: [0, 1],
         moveFront: [0, 1],
-        moveBack: [0, 1],
-        punch: [2],
-        punchFront: [2],
-        punchBack: [2],
-        block: [3],
-        blockFront: [3],
-        blockBack: [3],
-        dodge: [3],
-        hurt: [4],
-        ko: [5, 6],
-        win: [0, 1]
+        moveBack: [2, 3],
+        punch: [4, 5],
+        punchFront: [4, 5],
+        punchBack: [6, 7],
+        block: [8, 9],
+        blockFront: [8, 9],
+        blockBack: [10, 11],
+        dodge: [8],
+        hurt: [8],
+        ko: [4, 8],
+        win: [8, 9]
     },
     currentState: 'idle',
     moving: false,
@@ -151,7 +160,7 @@ const player = {
     punchFrame: 0,
     dancing: true,
     facingRight: true,
-    reverseBackFrames: false
+    reverseBackFrames: true
 };
 
 // AI Opponent (uses fighter2 - Bart)
@@ -160,31 +169,32 @@ const opponent = {
     x: 380,
     y: 240,
     width: 300, // Visual size match
-    height: 300, // Visual size match
+    height: 400, // Scaled for 3 rows
     // Sprite config
     spriteSheet: images.fighter2Movement,
     prefightImage: images.fighter2Prefight,
     isSprite: true,
     cols: 4,
-    rows: 4,
+    rows: 3,
+    rowHeights: [683, 683, 682],
     frameIndex: 0,
     animTimer: 0,
     animSpeed: 10,
     animations: {
-        idle: [0, 1], 
+        idle: [8, 9], 
         move: [0, 1],
         moveFront: [0, 1],
-        moveBack: [0, 1],
-        punch: [2],
-        punchFront: [2],
-        punchBack: [2],
-        block: [3],
-        blockFront: [3],
-        blockBack: [3],
-        dodge: [3],
-        hurt: [4],
-        ko: [5, 6],
-        win: [0, 1]
+        moveBack: [2, 3],
+        punch: [4, 5],
+        punchFront: [4, 5],
+        punchBack: [6, 7],
+        block: [8, 9],
+        blockFront: [8, 9],
+        blockBack: [10, 11],
+        dodge: [8],
+        hurt: [8],
+        ko: [4, 8],
+        win: [8, 9]
     },
     currentState: 'idle',
     moving: false,
@@ -565,10 +575,15 @@ function drawUI() {
         ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // KO Text
-        if (koState.phase === 'POP') {
+        // KO Text - show during POP, FALL, and DONE phases
+        if (koState.phase === 'POP' || koState.phase === 'FALL' || koState.phase === 'DONE') {
              ctx.translate(canvas.width/2, canvas.height/2);
-             const scale = Math.min(3, 1 + koState.timer * 0.1);
+             let scale;
+             if (koState.phase === 'POP') {
+                 scale = Math.min(3, 1 + koState.timer * 0.1);
+             } else {
+                 scale = 3; // Keep at max scale after pop
+             }
              ctx.scale(scale, scale);
              
              ctx.fillStyle = '#ff0';
@@ -656,6 +671,8 @@ function updateAnimation(entity, opponent) {
     let newState = 'idle';
     if (entity.punching) {
         newState = 'punch';
+    } else if (entity.dodging) {
+        newState = 'dodge';
     } else if (entity.blocking) {
         newState = 'block';
     } else if (entity.moving) {
@@ -728,6 +745,41 @@ function update() {
             introState.flashOpacity = Math.max(0, introState.flashOpacity - 0.05);
             // Pulse VS
             introState.vsScale = 1 + Math.sin(frame * 0.1) * 0.05;
+        }
+        return;
+    }
+    
+    if (gameState === 'KO_SEQUENCE') {
+        koState.timer++;
+        
+        if (koState.phase === 'FREEZE') {
+            // Brief freeze frame for impact
+            if (koState.timer > 30) {
+                koState.phase = 'POP';
+                koState.timer = 0;
+                playSound(200, 0.3, 'square'); // KO sound
+            }
+        } else if (koState.phase === 'POP') {
+            // KO text pops up and scales
+            if (koState.timer > 60) {
+                koState.phase = 'FALL';
+                koState.timer = 0;
+                // Advance to falling frame of KO animation
+                if (koState.loser.animations.ko && koState.loser.animations.ko.length > 1) {
+                    koState.loser.frameIndex = koState.loser.animations.ko[1];
+                }
+            }
+        } else if (koState.phase === 'FALL') {
+            // Loser falls down
+            if (koState.timer > 60) {
+                koState.phase = 'DONE';
+                koState.timer = 0;
+            }
+        } else if (koState.phase === 'DONE') {
+            // Transition to game over
+            if (koState.timer > 30) {
+                gameState = 'GAME_OVER';
+            }
         }
         return;
     }
